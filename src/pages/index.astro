@@ -1,0 +1,79 @@
+---
+import Layout from '../layouts/Layout.astro';
+import SubmissionForm from '../components/SubmissionForm.astro';
+import SubmissionsTable from '../components/SubmissionsTable.astro';
+import { db, schema } from '../db';
+import { desc } from 'drizzle-orm';
+import '../styles/table.css';
+
+// Fetch submissions from database
+const submissions = await db.query.submissions.findMany({
+  orderBy: [desc(schema.submissions.createdAt)]
+});
+---
+
+<Layout title="Astro with SQLite and Drizzle">
+	<main>
+		<div class="container">
+			<h1>Astro with SQLite and Drizzle</h1>
+			
+			<div class="content-grid">
+				<section class="form-section">
+					<SubmissionForm />
+				</section>
+				
+				<section class="table-section">
+					<SubmissionsTable submissions={submissions} />
+				</section>
+			</div>
+		</div>
+	</main>
+</Layout>
+
+<style>
+	.container {
+		max-width: 1200px;
+		margin: 0 auto;
+		padding: 1.5rem;
+	}
+	
+	h1 {
+		font-size: 2.5rem;
+		font-weight: 800;
+		margin-bottom: 2rem;
+		text-align: center;
+		color: #1e293b;
+	}
+	
+	.content-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 2rem;
+	}
+	
+	/* Desktop layout */
+	@media (min-width: 768px) {
+		.content-grid {
+			grid-template-columns: 1fr 1fr;
+		}
+		
+		.form-section {
+			order: 1;
+		}
+		
+		.table-section {
+			order: 2;
+		}
+	}
+	
+	/* Mobile layout */
+	@media (max-width: 767px) {
+		.form-section {
+			order: 1;
+		}
+		
+		.table-section {
+			order: 2;
+		}
+	}
+</style>

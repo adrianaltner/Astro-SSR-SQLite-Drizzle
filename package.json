@@ -1,0 +1,32 @@
+{
+  "name": "astro-drizzle-sqlite3-starter",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "start": "node dist/server/entry.mjs",
+    "astro": "astro",
+    "db:generate": "drizzle-kit generate:sqlite",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:init": "tsx src/db/init.ts",
+    "db:alter": "tsx src/db/alter-table.ts",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@astrojs/node": "^9.2.2",
+    "astro": "^5.10.0",
+    "better-sqlite3": "^11.10.0",
+    "drizzle-orm": "^0.44.2",
+    "nanoid": "^5.1.5"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "drizzle-kit": "^0.31.1",
+    "tsx": "^4.20.3"
+  }
+}

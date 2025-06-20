@@ -1,0 +1,196 @@
+---
+// SubmissionsTable.astro
+import type { Submission } from '../db/schema';
+
+interface Props {
+  submissions: Submission[];
+}
+
+const { submissions } = Astro.props;
+
+// Format date function for server-side
+function formatDate(timestamp: Date | number): string {
+  const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+  return date.toLocaleString('de-DE', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+---
+
+<div class="data-table-container">
+  <h2>Submissions</h2>
+  
+  {submissions.length === 0 ? (
+    <div class="empty-state">
+      <p>No submissions yet. Be the first to submit!</p>
+    </div>
+  ) : (
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Message</th>
+          <th>Photo</th>
+          <th>Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {submissions.map((submission) => (
+          <tr>
+            <td>{submission.name}</td>
+            <td>{submission.email}</td>
+            <td>{submission.message}</td>
+            <td>
+              {submission.photoPath ? (
+                <a href={submission.photoPath} target="_blank" rel="noopener noreferrer">
+                  <img 
+                    src={submission.photoPath} 
+                    alt="Uploaded photo" 
+                    width="100" 
+                    height="100" 
+                    style="object-fit: cover; border-radius: 4px;"
+                  />
+                </a>
+              ) : (
+                <span>No photo</span>
+              )}
+            </td>
+            <td>{formatDate(submission.createdAt)}</td>
+            <td>
+              <button 
+                class="delete-btn" 
+                data-id={submission.id}
+                aria-label="Delete submission"
+              >
+                Delete
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )}
+</div>
+
+<!-- Delete confirmation modal -->
+<div id="delete-modal" class="modal">
+  <div class="modal-content">
+    <h3>Confirm Deletion</h3>
+    <p>Are you sure you want to delete this submission?</p>
+    <p>This action cannot be undone.</p>
+    <div class="modal-actions">
+      <button id="cancel-delete" class="btn-cancel">Cancel</button>
+      <button id="confirm-delete" class="btn-delete">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const deleteButtons = document.querySelectorAll<HTMLButtonElement>('.delete-btn');
+    const modal = document.getElementById('delete-modal');
+    const cancelBtn = document.getElementById('cancel-delete');
+    const confirmBtn = document.getElementById('confirm-delete');
+    let currentSubmissionId: string | null = null;
+    let currentButton: HTMLButtonElement | null = null;
+    
+    function showModal() {
+      if (modal) modal.classList.add('show-modal');
+    }
+    
+    function hideModal() {
+      if (modal) modal.classList.remove('show-modal');
+      currentSubmissionId = null;
+      currentButton = null;
+    }
+    
+    // Open modal when delete button is clicked
+    deleteButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        // Get the submission ID from the button's data attribute
+        currentSubmissionId = button.getAttribute('data-id');
+        currentButton = button;
+        
+        if (!currentSubmissionId) return;
+        
+        // Show modal
+        showModal();
+      });
+    });
+    
+    // Close modal when cancel button is clicked
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        hideModal();
+      });
+    }
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        hideModal();
+      }
+    });
+    
+    // Handle delete confirmation
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', async () => {
+        if (!currentSubmissionId) {
+          hideModal();
+          return;
+        }
+        
+        try {
+          const response = await fetch('/api/delete', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id: currentSubmissionId })
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            // Remove the row from the table
+            if (currentButton) {
+              const row = currentButton.closest('tr');
+              if (row) {
+                row.remove();
+              }
+              
+              // If it was the last row, show the empty state
+              const tableBody = document.querySelector('.data-table tbody');
+              if (tableBody && tableBody.children.length === 0) {
+                const table = document.querySelector('.data-table');
+                const emptyState = document.createElement('div');
+                emptyState.className = 'empty-state';
+                emptyState.innerHTML = '<p>No submissions yet. Be the first to submit!</p>';
+                
+                if (table) {
+                  table.replaceWith(emptyState);
+                }
+              }
+            }
+            
+            hideModal();
+          } else {
+            hideModal();
+            alert(`Error: ${result.error || 'Failed to delete submission'}`);
+          }
+        } catch (error) {
+          console.error('Error deleting submission:', error);
+          hideModal();
+          alert('An error occurred while deleting the submission');
+        }
+      });
+    }
+  });
+</script>
+
