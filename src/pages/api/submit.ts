@@ -1,8 +1,9 @@
 import type { APIRoute } from 'astro';
 import { db, schema } from '../../db';
-import { writeFile, mkdir, access } from 'fs/promises';
+import { writeFile } from 'fs/promises';
 import { createId } from '../../db/utils';
 import path from 'path';
+import { getFileUploadPaths } from '../../utils/file-helpers';
 
 // Type for request data validation
 interface SubmissionData {
@@ -105,25 +106,26 @@ const validateData = (data: unknown): { valid: boolean; error?: string; data?: S
 // Function to save photo
 const savePhoto = async (photo: File): Promise<string | null> => {
   try {
-    // Create uploads directory if it doesn't exist
-    const uploadDir = './public/uploads';
+    // Get file paths helper
+    const fileHelper = getFileUploadPaths();
     
-    try {
-      await access(uploadDir);
-    } catch {
-      await mkdir(uploadDir, { recursive: true });
-    }
+    // Ensure uploads directory exists
+    await fileHelper.ensureUploadsDir();
 
     // Generate unique filename
     const fileExtension = path.extname(photo.name);
     const fileName = `${createId()}${fileExtension}`;
-    const filePath = path.join(uploadDir, fileName);
+    
+    // Create full file path
+    const filePath = path.join(fileHelper.uploadsDir, fileName);
 
-    // Save file
+    // Convert file to buffer and save
     const arrayBuffer = await photo.arrayBuffer();
     await writeFile(filePath, new Uint8Array(arrayBuffer));
+    
+    console.log(`File saved successfully to: ${filePath}`);
 
-    // Return relative path for database
+    // Return relative path for database (same for both environments)
     return `/uploads/${fileName}`;
   } catch (error) {
     console.error('Photo save error:', error);

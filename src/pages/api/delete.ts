@@ -3,6 +3,7 @@ import { db, schema } from '../../db';
 import { eq } from 'drizzle-orm';
 import { unlink } from 'fs/promises';
 import path from 'path';
+import { getFileUploadPaths } from '../../utils/file-helpers';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
@@ -38,16 +39,32 @@ export const POST: APIRoute = async ({ request }) => {
     // If the submission has a photo, delete it from the file system
     if (submission.photoPath) {
       try {
-        // Convert the relative URL path to a system path
-        const relativePath = submission.photoPath.startsWith('/') 
-          ? submission.photoPath.substring(1) // Remove leading slash if present
-          : submission.photoPath;
-        const photoPath = path.join(process.cwd(), 'public', relativePath);
+        // Get file paths helper
+        const fileHelper = getFileUploadPaths();
         
-        await unlink(photoPath);
+        // Get all possible paths where the file might exist
+        const possiblePaths = fileHelper.getAllPossiblePaths(submission.photoPath);
+        
+        // Try to delete from each possible location
+        let deleted = false;
+        
+        for (const photoPath of possiblePaths) {
+          try {
+            await unlink(photoPath);
+            console.log(`Successfully deleted file: ${photoPath}`);
+            deleted = true;
+            break; // Stop after first successful deletion
+          } catch (fileError) {
+            console.log(`File not found at: ${photoPath}`);
+          }
+        }
+        
+        if (!deleted) {
+          console.warn(`Could not find file to delete: ${submission.photoPath}`);
+        }
       } catch (err) {
-        console.error('Error deleting photo file:', err);
-        // Continue with deletion even if file removal fails
+        console.error('Error in file deletion process:', err);
+        // Continue with database deletion even if file removal fails
       }
     }
 
