@@ -172,12 +172,16 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Insert data into database
+    // Create a new date for the timestamp and ensure it's in the correct timezone
+    const createdAt = new Date();
+    
     const newSubmission = await db.insert(schema.submissions)
       .values({
         name,
         email,
         message,
         photoPath: photoPath || null, // Use the photoPath field with null as fallback
+        createdAt: createdAt, // Explicitly set the timestamp
       })
       .returning()
       .get();

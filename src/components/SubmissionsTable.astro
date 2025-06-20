@@ -1,24 +1,13 @@
 ---
 // SubmissionsTable.astro
 import type { Submission } from '../db/schema';
+import { formatDate } from '../utils/date-helpers';
 
 interface Props {
   submissions: Submission[];
 }
 
 const { submissions } = Astro.props;
-
-// Format date function for server-side
-function formatDate(timestamp: Date | number): string {
-  const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
-  return date.toLocaleString('de-DE', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 ---
 
 <div class="data-table-container">
@@ -61,7 +50,7 @@ function formatDate(timestamp: Date | number): string {
                 <span>No photo</span>
               )}
             </td>
-            <td>{formatDate(submission.createdAt)}</td>
+            <td>{formatDate(submission.createdAt, 'full')}</td>
             <td>
               <button 
                 class="delete-btn" 
