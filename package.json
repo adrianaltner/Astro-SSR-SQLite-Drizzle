@@ -12,6 +12,8 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:init": "tsx src/db/init.ts",
     "db:alter": "tsx src/db/alter-table.ts",
+    "db:alter-submissions": "tsx src/db/alter-submissions.ts",
+    "db:init-users": "tsx src/db/init-users.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {

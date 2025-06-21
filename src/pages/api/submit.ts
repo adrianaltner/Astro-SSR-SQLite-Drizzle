@@ -4,6 +4,9 @@ import { writeFile } from 'fs/promises';
 import { createId } from '../../db/utils';
 import path from 'path';
 import { getFileUploadPaths } from '../../utils/file-helpers';
+import { getAuthFromRequest, authMiddleware } from '../../utils/session';
+import { eq } from 'drizzle-orm';
+import type { Submission } from '../../db/schema';
 
 // Type for request data validation
 interface SubmissionData {
@@ -133,29 +136,32 @@ const savePhoto = async (photo: File): Promise<string | null> => {
   }
 };
 
-export const POST: APIRoute = async ({ request }) => {
-  try {
-    // Check if request contains multipart/form-data (for file uploads)
-    const contentType = request.headers.get('content-type') || '';
-    
-    let validationResult;
+export const POST: APIRoute = async (context) => {
+  // Use the authentication middleware
+  return authMiddleware(context, async (authState) => {
+    try {
+      const { request } = context;
+      // Check if request contains multipart/form-data (for file uploads)
+      const contentType = request.headers.get('content-type') || '';
+      
+      let validationResult;
 
-    if (contentType.includes('multipart/form-data')) {
-      // Handle FormData (with potential file upload)
-      const formData = await request.formData();
-      validationResult = validateFormData(formData);
-    } else {
-      // Handle JSON (backward compatibility)
-      const requestData = await request.json();
-      validationResult = validateData(requestData);
-    }
-    
-    if (!validationResult.valid || !validationResult.data) {
-      return new Response(
-        JSON.stringify({ success: false, error: validationResult.error }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
+      if (contentType.includes('multipart/form-data')) {
+        // Handle FormData (with potential file upload)
+        const formData = await request.formData();
+        validationResult = validateFormData(formData);
+      } else {
+        // Handle JSON (backward compatibility)
+        const requestData = await request.json();
+        validationResult = validateData(requestData);
+      }
+      
+      if (!validationResult.valid || !validationResult.data) {
+        return new Response(
+          JSON.stringify({ success: false, error: validationResult.error }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
 
     const { name, email, message, photo } = validationResult.data;
 
@@ -175,6 +181,18 @@ export const POST: APIRoute = async ({ request }) => {
     // Create a new date for the timestamp and ensure it's in the correct timezone
     const createdAt = new Date();
     
+    // Get user information from auth state
+    // Make sure the user ID is properly set as a required field
+    if (!authState.user?.id) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'User authentication failed or user ID is missing' 
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    
     const newSubmission = await db.insert(schema.submissions)
       .values({
         name,
@@ -182,6 +200,7 @@ export const POST: APIRoute = async ({ request }) => {
         message,
         photoPath: photoPath || null, // Use the photoPath field with null as fallback
         createdAt: createdAt, // Explicitly set the timestamp
+        userId: authState.user.id // Associate with the logged-in user (guaranteed to exist)
       })
       .returning()
       .get();
@@ -207,26 +226,48 @@ export const POST: APIRoute = async ({ request }) => {
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
+  });
 };
 
 // Optional: GET endpoint to retrieve submissions
-export const GET: APIRoute = async () => {
-  try {
-    const submissions = await db.select().from(schema.submissions).limit(100);
-    
-    return new Response(
-      JSON.stringify({ success: true, data: submissions }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
-  } catch (error) {
-    console.error('Get submissions error:', error);
-    
-    return new Response(
-      JSON.stringify({ success: false, error: 'Failed to retrieve submissions' }),
-      { 
-        status: 500, 
-        headers: { 'Content-Type': 'application/json' } 
+export const GET: APIRoute = async (context) => {
+  // Use authentication middleware
+  return authMiddleware(context, async (authState) => {
+    try {
+      // Get user information from auth state
+      const userId = authState.user?.id;
+      const isAdmin = authState.user?.role === 'admin';
+      
+      // Variable to hold submissions with explicit type
+      let submissions: Submission[] = [];
+      
+      if (isAdmin) {
+        // Admins can see all submissions
+        submissions = await db.select().from(schema.submissions).limit(100);
+      } else if (userId) {
+        // Regular users can only see their own submissions
+        submissions = await db
+          .select()
+          .from(schema.submissions)
+          .where(eq(schema.submissions.userId, userId))
+          .limit(100);
       }
-    );
-  }
+      // If neither condition is met, submissions remains an empty array
+      
+      return new Response(
+        JSON.stringify({ success: true, data: submissions }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    } catch (error) {
+      console.error('Get submissions error:', error);
+      
+      return new Response(
+        JSON.stringify({ success: false, error: 'Failed to retrieve submissions' }),
+        { 
+          status: 500, 
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+  });
 };

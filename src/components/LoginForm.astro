@@ -1,0 +1,194 @@
+---
+// LoginForm.astro
+---
+
+<div class="form-container">
+  <h2>Login</h2>
+  <form id="login-form" class="login-form">
+    <div id="form-alerts"></div>
+    
+    <div class="form-group">
+      <label for="usernameOrEmail">Username or Email</label>
+      <input 
+        type="text" 
+        id="usernameOrEmail" 
+        name="usernameOrEmail" 
+        class="form-control" 
+        required 
+      />
+    </div>
+    
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input 
+        type="password" 
+        id="password" 
+        name="password" 
+        class="form-control" 
+        required 
+      />
+    </div>
+    
+    <button type="submit" class="submit-btn">Login</button>
+    
+    <div class="form-footer">
+      <p>Don't have an account? <a href="/register">Register</a></p>
+    </div>
+  </form>
+</div>
+
+<style>
+  .login-form {
+    max-width: 500px;
+    margin: 0 auto;
+  }
+  
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+  
+  .form-control {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  }
+  
+  .form-control:focus {
+    border-color: #3b82f6;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+  }
+  
+  .submit-btn {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    margin-top: 1.5rem;
+    font-size: 1rem;
+    font-weight: 500;
+    color: white;
+    background-color: #3b82f6;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .submit-btn:hover {
+    background-color: #2563eb;
+  }
+  
+  .form-footer {
+    margin-top: 1.5rem;
+    text-align: center;
+    font-size: 0.9rem;
+  }
+  
+  .form-footer a {
+    color: #3b82f6;
+    text-decoration: none;
+  }
+  
+  .form-footer a:hover {
+    text-decoration: underline;
+  }
+  
+  #form-alerts {
+    margin-bottom: 1.5rem;
+  }
+  
+  .alert {
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.9rem;
+  }
+  
+  .alert-error {
+    background-color: #fee2e2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+  }
+  
+  .alert-success {
+    background-color: #dcfce7;
+    border: 1px solid #bbf7d0;
+    color: #166534;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('login-form') as HTMLFormElement;
+    const alertsContainer = document.getElementById('form-alerts');
+    
+    // Show alert message
+    function showAlert(message: string, type: 'error' | 'success') {
+      if (!alertsContainer) return;
+      
+      // Clear previous alerts
+      alertsContainer.innerHTML = '';
+      
+      // Create alert element
+      const alert = document.createElement('div');
+      alert.className = `alert alert-${type}`;
+      alert.textContent = message;
+      
+      // Add to container
+      alertsContainer.appendChild(alert);
+    }
+    
+    // Handle form submission
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      try {
+        // Get form data
+        const formData = new FormData(form);
+        
+        // Convert to JSON
+        const data = {
+          usernameOrEmail: formData.get('usernameOrEmail'),
+          password: formData.get('password')
+        };
+        
+        // Submit login
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          // Show success message
+          showAlert('Login successful! Redirecting...', 'success');
+          
+          // In a real app, you'd store the user or token in a session/cookie/localStorage
+          // Redirect to dashboard
+          setTimeout(() => {
+            window.location.href = '/dashboard';
+          }, 1000);
+        } else {
+          // Show error message
+          showAlert(result.error || 'Login failed', 'error');
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        showAlert('An error occurred during login', 'error');
+      }
+    });
+  });
+</script>

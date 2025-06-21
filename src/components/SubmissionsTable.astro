@@ -2,16 +2,28 @@
 // SubmissionsTable.astro
 import type { Submission } from '../db/schema';
 import { formatDate } from '../utils/date-helpers';
+import { getAuthFromRequest } from '../utils/session';
 
 interface Props {
   submissions: Submission[];
 }
 
 const { submissions } = Astro.props;
+
+// Check if user is admin
+const { user } = await getAuthFromRequest(Astro.request);
+const isAdmin = user?.role === 'admin';
 ---
 
 <div class="data-table-container">
-  <h2>Submissions</h2>
+  <div class="table-header">
+    <h2>Submissions</h2>
+    {isAdmin ? (
+      <span class="view-badge admin-badge">Viewing All Submissions (Admin)</span>
+    ) : (
+      <span class="view-badge user-badge">Viewing Your Submissions</span>
+    )}
+  </div>
   
   {submissions.length === 0 ? (
     <div class="empty-state">

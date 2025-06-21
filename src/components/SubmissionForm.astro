@@ -1,58 +1,72 @@
 ---
 // SubmissionForm.astro
+import { getAuthFromRequest } from '../utils/session';
+
+// Check authentication status
+const { isAuthenticated, user } = await getAuthFromRequest(Astro.request);
 ---
 
 <div class="form-container">
   <h2>Submit Your Information</h2>
-  <form id="submission-form" class="submission-form" enctype="multipart/form-data">
-    <div id="form-alerts"></div>
-    
-    <div class="form-group">
-      <label for="name">Name</label>
-      <input 
-        type="text" 
-        id="name" 
-        name="name" 
-        class="form-control" 
-        required 
-      />
+  
+  {isAuthenticated ? (
+    <form id="submission-form" class="submission-form" enctype="multipart/form-data">
+      <div id="form-alerts"></div>
+      
+      <div class="form-group">
+        <label for="name">Name</label>
+        <input 
+          type="text" 
+          id="name" 
+          name="name" 
+          class="form-control" 
+          value={user?.fullName || ''}
+          required 
+        />
+      </div>
+      
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input 
+          type="email" 
+          id="email" 
+          name="email" 
+          class="form-control" 
+          value={user?.email || ''}
+          required 
+        />
+      </div>
+      
+      <div class="form-group">
+        <label for="message">Message</label>
+        <textarea 
+          id="message" 
+          name="message" 
+          class="form-control" 
+          required
+        ></textarea>
+      </div>
+      
+      <div class="form-group">
+        <label for="photo">Photo (optional)</label>
+        <input 
+          type="file" 
+          id="photo" 
+          name="photo" 
+          class="form-control" 
+          accept="image/jpeg,image/jpg,image/png,image/webp" 
+        />
+        <small class="form-text">Max size: 5MB. Accepted formats: JPEG, PNG, WebP</small>
+      </div>
+      
+      <button type="submit" class="submit-btn">Submit</button>
+    </form>
+  ) : (
+    <div class="auth-required">
+      <p>You need to be logged in to submit information.</p>
+      <p>Please use the login/register links in the header above.</p>
     </div>
-    
-    <div class="form-group">
-      <label for="email">Email</label>
-      <input 
-        type="email" 
-        id="email" 
-        name="email" 
-        class="form-control" 
-        required 
-      />
-    </div>
-    
-    <div class="form-group">
-      <label for="message">Message</label>
-      <textarea 
-        id="message" 
-        name="message" 
-        class="form-control" 
-        required
-      ></textarea>
-    </div>
-    
-    <div class="form-group">
-      <label for="photo">Photo (optional)</label>
-      <input 
-        type="file" 
-        id="photo" 
-        name="photo" 
-        class="form-control" 
-        accept="image/jpeg,image/jpg,image/png,image/webp" 
-      />
-      <small class="form-text">Max size: 5MB. Accepted formats: JPEG, PNG, WebP</small>
-    </div>
-    
-    <button type="submit" class="submit-btn">Submit</button>
-  </form>
+  )}
 </div>
 
 <script>
@@ -103,7 +117,18 @@
         const result = await response.json();
         
         if (!response.ok || !result.success) {
-          // Show error message
+          // Handle authentication errors specifically
+          if (response.status === 401) {
+            showAlert('error', 'You must be logged in to submit information');
+            
+            // Redirect to login page after a short delay
+            setTimeout(() => {
+              window.location.href = '/login?redirect=/' + (result.redirectTo ? encodeURIComponent(result.redirectTo) : '');
+            }, 2000);
+            return;
+          }
+          
+          // Show other error messages
           const errorMessage = result.error || 'Something went wrong. Please try again.';
           showAlert('error', errorMessage);
           return;
@@ -145,3 +170,56 @@
     }
   }
 </script>
+
+<style>
+  /* Existing styles for the form remain unchanged */
+
+  /* New styles for authentication required message */
+  .auth-required {
+    padding: 2rem;
+    background-color: #f8fafc;
+    border-radius: 0.5rem;
+    border: 1px solid #e2e8f0;
+    text-align: center;
+  }
+  
+  .auth-required p {
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+    color: #475569;
+  }
+  
+  .auth-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+  }
+  
+  .auth-button {
+    display: inline-block;
+    padding: 0.7rem 1.5rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  
+  .login-btn {
+    background-color: #3b82f6;
+    color: white;
+  }
+  
+  .login-btn:hover {
+    background-color: #2563eb;
+  }
+  
+  .register-btn {
+    background-color: white;
+    color: #3b82f6;
+    border: 1px solid #3b82f6;
+  }
+  
+  .register-btn:hover {
+    background-color: #eff6ff;
+  }
+</style>

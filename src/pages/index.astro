@@ -1,30 +1,56 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import SubmissionForm from '../components/SubmissionForm.astro';
-import SubmissionsTable from '../components/SubmissionsTable.astro';
-import { db, schema } from '../db';
-import { desc } from 'drizzle-orm';
-import '../styles/table.css';
+import { getAuthFromRequest } from '../utils/session';
 
-// Fetch submissions from database
-const submissions = await db.query.submissions.findMany({
-  orderBy: [desc(schema.submissions.createdAt)]
-});
+// Check authentication status
+const { isAuthenticated } = await getAuthFromRequest(Astro.request);
+
+// Redirect to dashboard if already authenticated
+if (isAuthenticated) {
+  return Astro.redirect('/dashboard');
+}
 ---
 
 <Layout title="Astro with SQLite and Drizzle">
 	<main>
 		<div class="container">
-			<h1>Astro with SQLite and Drizzle</h1>
+			<div class="header">
+				<h1>Astro with SQLite and Drizzle</h1>
+			</div>
 			
-			<div class="content-grid">
-				<section class="form-section">
-					<SubmissionForm />
-				</section>
+			<div class="login-container">
+				<div class="welcome-section">
+					<h2>Welcome to our Application</h2>
+					<p>Submit and manage your information with our easy-to-use platform.</p>
+					<div class="features">
+						<div class="feature">
+							<div class="feature-icon">🔒</div>
+							<h3>Secure Authentication</h3>
+							<p>Role-based access control with secure login.</p>
+						</div>
+						<div class="feature">
+							<div class="feature-icon">📊</div>
+							<h3>Data Management</h3>
+							<p>Easily submit and track your information.</p>
+						</div>
+						<div class="feature">
+							<div class="feature-icon">🚀</div>
+							<h3>Fast Performance</h3>
+							<p>Built with Astro SSR for optimal speed.</p>
+						</div>
+					</div>
+				</div>
 				
-				<section class="table-section">
-					<SubmissionsTable submissions={submissions} />
-				</section>
+				<div class="auth-section">
+					<div class="auth-card">
+						<h2>Get Started</h2>
+						<p>Log in to your account or register to access the dashboard.</p>
+						<div class="auth-buttons">
+							<a href="/login" class="auth-button login-btn">Login</a>
+							<a href="/register" class="auth-button register-btn">Register</a>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 	</main>
@@ -35,6 +61,9 @@ const submissions = await db.query.submissions.findMany({
 		max-width: 1200px;
 		margin: 0 auto;
 		padding: 1.5rem;
+		min-height: 100vh;
+		display: flex;
+		flex-direction: column;
 	}
 	
 	h1 {
@@ -45,35 +74,197 @@ const submissions = await db.query.submissions.findMany({
 		color: #1e293b;
 	}
 	
-	.content-grid {
+	.header {
+		text-align: center;
+		margin-bottom: 3rem;
+	}
+	
+	.login-container {
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		gap: 3rem;
+	}
+	
+	.welcome-section {
+		text-align: center;
+		max-width: 800px;
+		margin: 0 auto;
+	}
+	
+	.welcome-section h2 {
+		font-size: 2rem;
+		color: #1e293b;
+		margin-bottom: 1rem;
+	}
+	
+	.welcome-section p {
+		font-size: 1.2rem;
+		color: #475569;
+		margin-bottom: 2rem;
+	}
+	
+	.features {
 		display: grid;
 		grid-template-columns: 1fr;
 		gap: 2rem;
+		margin-top: 3rem;
 	}
 	
+	.feature {
+		background-color: #f8fafc;
+		border-radius: 0.5rem;
+		border: 1px solid #e2e8f0;
+		padding: 1.5rem;
+		text-align: center;
+		transition: transform 0.3s ease;
+	}
+	
+	.feature:hover {
+		transform: translateY(-5px);
+		box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+	}
+	
+	.feature-icon {
+		font-size: 2.5rem;
+		margin-bottom: 1rem;
+		background-color: #eff6ff;
+		color: #3b82f6;
+		width: 4rem;
+		height: 4rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 50%;
+		margin: 0 auto 1rem auto;
+	}
+	
+	.feature h3 {
+		font-size: 1.2rem;
+		color: #1e293b;
+		margin-bottom: 0.5rem;
+	}
+	
+	.feature p {
+		font-size: 0.9rem;
+		color: #64748b;
+		margin: 0;
+	}
+	
+	.auth-section {
+		margin-top: 1rem;
+		display: flex;
+		justify-content: center;
+	}
+	
+	.auth-card {
+		background-color: #f8fafc;
+		border-radius: 0.5rem;
+		border: 1px solid #e2e8f0;
+		padding: 2.5rem;
+		text-align: center;
+		width: 100%;
+		max-width: 500px;
+		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+	}
+	
+	.auth-card h2 {
+		font-size: 1.75rem;
+		margin-bottom: 1rem;
+		color: #1e293b;
+	}
+	
+	.auth-card p {
+		margin-bottom: 2rem;
+		color: #475569;
+		font-size: 1.1rem;
+	}
+	
+	.auth-buttons {
+		display: flex;
+		justify-content: center;
+		gap: 1.5rem;
+	}
+	
+	.auth-button {
+		display: inline-block;
+		padding: 0.8rem 2rem;
+		border-radius: 0.375rem;
+		font-weight: 600;
+		text-decoration: none;
+		transition: all 0.3s ease;
+		font-size: 1.1rem;
+	}
+	
+	.login-btn {
+		background-color: #3b82f6;
+		color: white;
+	}
+	
+	.login-btn:hover {
+		background-color: #2563eb;
+		transform: translateY(-2px);
+		box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.5);
+	}
+	
+	.register-btn {
+		background-color: white;
+		color: #3b82f6;
+		border: 1px solid #3b82f6;
+	}
+	
+	.register-btn:hover {
+		background-color: #eff6ff;
+		transform: translateY(-2px);
+		box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
+	}
+
 	/* Desktop layout */
 	@media (min-width: 768px) {
-		.content-grid {
-			grid-template-columns: 1fr 1fr;
+		.features {
+			grid-template-columns: 1fr 1fr 1fr;
+			gap: 1.5rem;
 		}
 		
-		.form-section {
-			order: 1;
+		.login-container {
+			flex-direction: row;
+			align-items: center;
 		}
 		
-		.table-section {
-			order: 2;
+		.welcome-section {
+			flex: 2;
+			text-align: left;
+			padding-right: 3rem;
+		}
+		
+		.auth-section {
+			flex: 1;
+			margin-top: 0;
 		}
 	}
 	
-	/* Mobile layout */
+	/* Mobile layout adjustments */
 	@media (max-width: 767px) {
-		.form-section {
-			order: 1;
+		.container {
+			padding: 1rem;
 		}
 		
-		.table-section {
-			order: 2;
+		h1 {
+			font-size: 2rem;
+			margin-bottom: 1.5rem;
+		}
+		
+		.welcome-section h2 {
+			font-size: 1.6rem;
+		}
+		
+		.welcome-section p {
+			font-size: 1rem;
+		}
+		
+		.auth-button {
+			padding: 0.7rem 1.5rem;
+			font-size: 1rem;
 		}
 	}
 </style>

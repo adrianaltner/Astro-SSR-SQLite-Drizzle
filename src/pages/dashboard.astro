@@ -1,0 +1,165 @@
+---
+import Layout from '../layouts/Layout.astro';
+import SubmissionForm from '../components/SubmissionForm.astro';
+import SubmissionsTable from '../components/SubmissionsTable.astro';
+import { db, schema } from '../db';
+import { desc, eq } from 'drizzle-orm';
+import '../styles/table.css';
+import { getAuthFromRequest } from '../utils/session';
+
+// Check authentication status
+const { isAuthenticated, user } = await getAuthFromRequest(Astro.request);
+
+// Redirect to login if not authenticated
+if (!isAuthenticated) {
+  return Astro.redirect('/');
+}
+
+// Fetch submissions from database
+import type { Submission } from '../db/schema';
+let submissions: Submission[] = [];
+
+// Check if user is admin to determine which submissions they can see
+const isAdmin = user?.role === 'admin';
+
+if (isAdmin) {
+  // Admins can see all submissions
+  submissions = await db.query.submissions.findMany({
+    orderBy: [desc(schema.submissions.createdAt)]
+  });
+} else if (user?.id) {
+  // Regular users only see their own submissions
+  submissions = await db.query.submissions.findMany({
+    where: eq(schema.submissions.userId, user.id),
+    orderBy: [desc(schema.submissions.createdAt)]
+  });
+}
+---
+
+<Layout title="Dashboard | Astro with SQLite and Drizzle">
+	<main>
+		<div class="container">
+			<div class="header-with-auth">
+				<h1>Dashboard</h1>
+				<div class="auth-links">
+					<div class="user-info">
+						<span>Welcome, {user?.username || 'User'}</span>
+						<a href="/api/logout" class="auth-link logout-link">Logout</a>
+					</div>
+				</div>
+			</div>
+			
+			<div class="content-grid">
+				<section class="form-section">
+					<SubmissionForm />
+				</section>
+				
+				<section class="table-section">
+					<SubmissionsTable submissions={submissions} />
+				</section>
+			</div>
+		</div>
+	</main>
+</Layout>
+
+<style>
+	.container {
+		max-width: 1200px;
+		margin: 0 auto;
+		padding: 1.5rem;
+	}
+	
+	h1 {
+		font-size: 2.5rem;
+		font-weight: 800;
+		margin-bottom: 2rem;
+		text-align: center;
+		color: #1e293b;
+	}
+	
+	.content-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 2rem;
+	}
+	
+	.header-with-auth {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 2rem;
+	}
+	
+	.header-with-auth h1 {
+		margin-bottom: 0;
+		text-align: left;
+	}
+	
+	.auth-links {
+		display: flex;
+		gap: 1rem;
+		align-items: center;
+	}
+	
+	.auth-link {
+		padding: 0.6rem 1.2rem;
+		color: #3b82f6;
+		text-decoration: none;
+		border: 1px solid #3b82f6;
+		border-radius: 0.375rem;
+		font-weight: 600;
+		transition: all 0.2s;
+		margin-left: 0.5rem;
+	}
+	
+	.auth-link:hover {
+		background-color: #3b82f6;
+		color: white;
+	}
+	
+	.user-info {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+	}
+	
+	.user-info span {
+		color: #1e293b;
+		font-weight: 500;
+	}
+	
+	.logout-link {
+		color: #ef4444;
+		border-color: #ef4444;
+	}
+	
+	.logout-link:hover {
+		background-color: #ef4444;
+	}
+	
+	/* Desktop layout */
+	@media (min-width: 768px) {
+		.content-grid {
+			grid-template-columns: 1fr 1fr;
+		}
+		
+		.form-section {
+			order: 1;
+		}
+		
+		.table-section {
+			order: 2;
+		}
+	}
+	
+	/* Mobile layout */
+	@media (max-width: 767px) {
+		.form-section {
+			order: 1;
+		}
+		
+		.table-section {
+			order: 2;
+		}
+	}
+</style>
